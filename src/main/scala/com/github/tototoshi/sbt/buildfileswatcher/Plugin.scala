@@ -21,7 +21,8 @@ import scala.collection.mutable.{ Map => MutableMap }
 
 object Plugin extends sbt.Plugin {
 
-  private var buildFilesHashOnLoad: Option[Map[File, Seq[Byte]]] = None
+  private val buildFilesHashOnLoad = SettingKey[Map[File, Seq[Byte]]]("buildFilesHashOnLoad")
+  val messageOnBuildFilesChanged = SettingKey[State => String]("messageOnBuildFilesChanged")
 
   private def getBuildFiles(base: File): Seq[File] = {
     ((base * "*.sbt") +++ ((base / "project") ** ("*.scala" | "*.sbt"))).get
@@ -39,25 +40,22 @@ object Plugin extends sbt.Plugin {
     } yield file).distinct
   }
 
-  val messageOnBuildFilesChanged: State => String = { state =>
-    val files = listBuildFiles(state)
-    buildFilesHashOnLoad match {
-      case Some(h) if h != hash(files) =>
+  val messageOnBuildFilesChangedSetting: Setting[_] =
+    messageOnBuildFilesChanged := { state: State =>
+      val files = listBuildFiles(state)
+      if (buildFilesHashOnLoad.value != hash(files)) {
         scala.Console.RED + "Build files changed. Please reload." + scala.Console.RESET + "\n"
-      case Some(_) =>
+      } else {
         ""
-      case None =>
-        // set initial build file hash
-        buildFilesHashOnLoad = Some(hash(files))
-        ""
+      }
     }
-  }
 
   val showMessageOnBuildFilesChanged: Setting[_] =
     shellPrompt := { state =>
-      messageOnBuildFilesChanged(state) + "> "
+      messageOnBuildFilesChanged.value(state) + "> "
     }
 
-  override lazy val settings = Seq.empty
-
+  override lazy val settings = Seq(
+    messageOnBuildFilesChangedSetting
+  )
 }

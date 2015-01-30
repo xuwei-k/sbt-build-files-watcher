@@ -18,6 +18,6 @@ showMessageOnBuildFilesChanged
 with sbt-git
 ```scala
 shellPrompt := { state =>
-  messageOnBuildFilesChanged(state) + GitCommand.prompt(state)
+  messageOnBuildFilesChanged.value(state) + GitCommand.prompt(state)
 }
 ```
